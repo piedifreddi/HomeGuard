@@ -17,43 +17,43 @@ fi
 #  echo "⚠️  Distro non Ubuntu, script ottimizzato per Ubuntu."
 #fi 
 
-# --- 1. Gestione systemd-resolved ---
+# --- 1) Managing systemd-resolved ---
 if systemctl is-active systemd-resolved &>/dev/null; then
-  echo "[+] Disabilito solo lo stub listener di systemd-resolved"
+  echo "[+] Diabling stub listener systemd-resolved"
   sed -i 's/^#\?DNSStubListener=.*/DNSStubListener=no/g' /etc/systemd/resolved.conf || true
   systemctl restart systemd-resolved || true
 
-  # Assicura che /etc/resolv.conf punti al file non-stub
+  # Make sure /etc/resolv.conf points to non-stub file
   if [ -L /etc/resolv.conf ]; then
     target=$(readlink -f /etc/resolv.conf)
     if [ "$target" = "/run/systemd/resolve/stub-resolv.conf" ]; then
       ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
-      echo "[i] Puntato /etc/resolv.conf → /run/systemd/resolve/resolv.conf"
+      echo "[i] Pointing /etc/resolv.conf → /run/systemd/resolve/resolv.conf"
     fi
   fi
 fi
 
-# --- 2. Installa pacchetti base ---
+# --- 2) Install base packets ---
 echo "[+] Installing Unbound"
 apt-get update -y
 apt-get install -y unbound curl dns-root-data
 
-# --- 3. Root hints aggiornati ---
+# --- 3) Update Root hints ---
 mkdir -p /var/lib/unbound
 cp /usr/share/dns/root.hints /var/lib/unbound/root.hints || true
-echo "[+] Aggiorno root hints da Internic"
+echo "[+] Updating root hints from Internic"
 curl -fsSL -o /var/lib/unbound/root.hints https://www.internic.net/domain/named.root || true
 chown unbound:unbound /var/lib/unbound/root.hints
 chmod 644 /var/lib/unbound/root.hints
 
-# --- 4. Configurazione principale ---
+# --- 4) Main configuration ---
 mkdir -p /etc/unbound/unbound.conf.d
 
 CONF_FILE="/etc/unbound/unbound.conf.d/recursor.conf"
 
-# Solo se non esiste o se vogliamo rigenerarlo
+# if it doesn't exist
 if [ ! -f "$CONF_FILE" ]; then
-  echo "[+] Creo configurazione di base ($CONF_FILE)"
+  echo "[+] Creating main configuration ($CONF_FILE)"
   cat > "$CONF_FILE" <<'EOF'
 server:
   verbosity: 0
@@ -64,7 +64,7 @@ server:
   do-udp: yes
   do-tcp: yes
 
-  # Sicurezza e performance
+  # Security
   root-hints: "/var/lib/unbound/root.hints"
   harden-glue: yes
   harden-dnssec-stripped: yes
@@ -79,7 +79,7 @@ server:
   auto-trust-anchor-file: "/var/lib/unbound/root.key"
   trust-anchor-signaling: yes
 
-  # Interfacce
+  # Interfaces
   access-control: 127.0.0.0/8 allow
   access-control: ::1 allow
   access-control: 10.0.0.0/8 allow
@@ -87,27 +87,28 @@ server:
   access-control: 172.16.0.0/12 allow
 EOF
 else
-  echo "[i] Configurazione già presente, lascio invariato $CONF_FILE"
+  echo "[i] Configuration already existing: $CONF_FILE"
 fi
 
-# --- 5. Aggiorna trust anchor (DNSSEC) ---
-echo "[+] Aggiorno trust anchor DNSSEC"
+# --- 5) Update trust anchor (DNSSEC) ---
+echo "[+] Updating trust anchor DNSSEC"
+rm -f /var/lib/unbound/root.key
 unbound-anchor -a /var/lib/unbound/root.key || true
 chown unbound:unbound /var/lib/unbound/root.key
 chmod 644 /var/lib/unbound/root.key
 
 # --- 6) enable and start Unbound ---
-echo "[+] Abilito e riavvio Unbound"
+echo "[+] Enable and start Unbound"
 systemctl enable unbound
 systemctl restart unbound
 
-# --- 7) Test di funzionamento ---
-echo "[+] Test: risoluzione DNS ricorsiva tramite Unbound"
+# --- 7) Testing ---
+echo "[+] Test: recursive DNS resolution with Unbound"
 if command -v dig >/dev/null 2>&1; then
-  dig @127.0.0.1 -p 5335 www.google.com +short || echo "⚠️ Test DNS fallito"
+  dig @127.0.0.1 -p 5335 www.google.com +short || echo "DNS test failed"
 else
   apt-get install -y dnsutils >/dev/null 2>&1 || true
-  dig @127.0.0.1 -p 5335 www.google.com +short || echo "⚠️ Test DNS fallito"
+  dig @127.0.0.1 -p 5335 www.google.com +short || echo "DNS test failed"
 fi
 
-echo "✅ Unbound installato e funzionante su 127.0.0.1#5335"
+echo "[✓] Unbound installed and running on 127.0.0.1#5335"
