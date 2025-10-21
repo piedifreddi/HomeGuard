@@ -17,10 +17,11 @@ echo "=============================="
 echo " [ Pi-hole Installer - Ubuntu ]"
 echo "=============================="
 
+# ---- install dependecies ----
 apt-get update -y
 apt-get install -y curl git jq iproute2 dnsutils
 
-# ---- Rileva IFACE/IP se non forniti ----
+# ---- IFACE/IP ----
 if [ -z "$IFACE" ]; then
   IFACE=$(ip -4 route get 1.1.1.1 | awk '/dev/ {print $5; exit}')
 fi
