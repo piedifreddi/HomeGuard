@@ -90,16 +90,38 @@ else
   echo "[i] Configuration already existing: $CONF_FILE"
 fi
 
+#echo "[+] Updating trust anchor DNSSEC"
+#install -d -o unbound -g unbound -m 755 /var/lib/unbound
+#rm -f /var/lib/unbound/root.key
+#if ! command -v unbound-anchor >/dev/null 2>&1; then
+#  apt-get install -y unbound-anchor
+#fi
+#unbound-anchor -a /var/lib/unbound/root.key || true
+#chown unbound:unbound /var/lib/unbound/root.key
+#chmod 644 /var/lib/unbound/root.key
+
 # --- 5) Update trust anchor (DNSSEC) ---
-echo "[+] Updating trust anchor DNSSEC"
-install -d -o unbound -g unbound -m 755 /var/lib/unbound
+echo "[+] Aggiorno trust anchor DNSSEC (metodo Ubuntu compatibile)"
+
+# Remove duplicate or corrupted file
 rm -f /var/lib/unbound/root.key
-if ! command -v unbound-anchor >/dev/null 2>&1; then
-  apt-get install -y unbound-anchor
+
+# Usa l'helper di sistema Ubuntu per rigenerare la chiave
+if [ -x /usr/libexec/unbound-helper ]; then
+  /usr/libexec/unbound-helper root_trust_anchor_update || true
+else
+  echo "[!] Attenzione: unbound-helper non trovato, provo fallback manuale."
+  if command -v unbound-anchor >/dev/null 2>&1; then
+    unbound-anchor -a /var/lib/unbound/root.key || true
+  else
+    apt-get install -y unbound-anchor || true
+    unbound-anchor -a /var/lib/unbound/root.key || true
+  fi
 fi
-unbound-anchor -a /var/lib/unbound/root.key || true
-chown unbound:unbound /var/lib/unbound/root.key
-chmod 644 /var/lib/unbound/root.key
+
+# Imposta i permessi corretti
+chown unbound:unbound /var/lib/unbound/root.key 2>/dev/null || true
+chmod 644 /var/lib/unbound/root.key 2>/dev/null || true
 
 # --- 6) enable and start Unbound ---
 echo "[+] Enable and start Unbound"
