@@ -29,30 +29,30 @@ FAMILY="$(pick_family)"
 
 case "$FAMILY" in
   debian)
-    echo "[*] Distro rilevata: Debian/Ubuntu"
+    echo "[*] Distro detected: Debian/Ubuntu"
     bash "$ROOT_DIR/installer/ubuntu/install_unbound.sh"
     PIHOLE_PWD="${PIHOLE_PWD:-changeme}" \
       bash "$ROOT_DIR/installer/ubuntu/install_pihole.sh"
-    # bash "$ROOT_DIR/installer/ubuntu/install_wireguard.sh"
+      bash "$ROOT_DIR/installer/ubuntu/install_wireguard.sh"
     ;;
   rhel)
-    echo "[*] Distro rilevata: RHEL/Fedora (preview)"
+    echo "[*] Distro detected: RHEL/Fedora (preview)"
     bash "$ROOT_DIR/installer/rhel/install_unbound.sh"
     PIHOLE_PWD="${PIHOLE_PWD:-changeme}" \
       bash "$ROOT_DIR/installer/rhel/install_pihole.sh"
-    # bash "$ROOT_DIR/installer/rhel/install_wireguard.sh"
+      bash "$ROOT_DIR/installer/rhel/install_wireguard.sh"
     ;;
   arch)
-    echo "[*] Distro rilevata: Arch/Manjaro (preview)"
+    echo "[*] Distro detected: Arch/Manjaro (preview)"
     bash "$ROOT_DIR/installer/arch/install_unbound.sh"
     PIHOLE_PWD="${PIHOLE_PWD:-changeme}" \
       bash "$ROOT_DIR/installer/arch/install_pihole.sh"
-    # bash "$ROOT_DIR/installer/arch/install_wireguard.sh"
+      bash "$ROOT_DIR/installer/arch/install_wireguard.sh"
     ;;
   *)
-    echo "❌ Distro non riconosciuta. Supporto iniziale: Ubuntu/Debian."
+    echo "Distro not recognized."
     exit 1
     ;;
 esac
 
-echo "✓ Installazione base completata (Unbound + Pi-hole)."
+echo "Installation completed"
