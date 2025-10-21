@@ -13,11 +13,6 @@ LISTEN_ALL="${LISTEN_ALL:-1}"          # 1 = Pi-hole "single" (tutte le interfac
 IPV4_CIDR="${IPV4_CIDR:-}"             # opzionale: es. 192.168.1.10/24. Se vuoto lo rilevo.
 IFACE="${IFACE:-}"                     # opzionale: es. eth0. Se vuoto lo rilevo.
 
-# ---- Pre-check ----
-[ "$EUID" -eq 0 ] || { echo "❌ Esegui come root (sudo)."; exit 1; }
-. /etc/os-release
-[ "${ID:-}" = "ubuntu" ] || echo "⚠️ Script ottimizzato per Ubuntu."
-
 echo "=============================="
 echo " [ Pi-hole Installer - Ubuntu ]"
 echo "=============================="
@@ -140,6 +135,6 @@ echo "[+] Test DNS via Pi-hole (porta 53)"
 dig @127.0.0.1 -p 53 example.com +short || echo "⚠️ Test fallito (controlla pihole-FTL/unbound)."
 
 echo
-echo "✅ Pi-hole instradato su Unbound (127.0.0.1#5335)."
-echo "🔗 WebUI: http://${HOST_IP}/admin"
-echo "🔐 Password: ${PIHOLE_PWD}"
+echo "Pi-hole instradato su Unbound (127.0.0.1#5335)."
+echo "WebUI: http://${HOST_IP}/admin"
+echo "Password: ${PIHOLE_PWD}"
