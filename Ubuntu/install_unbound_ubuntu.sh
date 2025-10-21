@@ -36,8 +36,8 @@ fi
 # --- 2) Install base packets ---
 echo "[+] Installing Unbound"
 apt-get update -y
-apt-get install -y unbound curl dns-root-data
-
+apt-get install -y unbound unbound-anchor curl dns-root-data ca-certificates
+ 
 # --- 3) Update Root hints ---
 mkdir -p /var/lib/unbound
 cp /usr/share/dns/root.hints /var/lib/unbound/root.hints || true
@@ -92,7 +92,11 @@ fi
 
 # --- 5) Update trust anchor (DNSSEC) ---
 echo "[+] Updating trust anchor DNSSEC"
+install -d -o unbound -g unbound -m 755 /var/lib/unbound
 rm -f /var/lib/unbound/root.key
+if ! command -v unbound-anchor >/dev/null 2>&1; then
+  apt-get install -y unbound-anchor
+fi
 unbound-anchor -a /var/lib/unbound/root.key || true
 chown unbound:unbound /var/lib/unbound/root.key
 chmod 644 /var/lib/unbound/root.key
