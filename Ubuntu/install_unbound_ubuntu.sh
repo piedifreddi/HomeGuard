@@ -5,17 +5,17 @@ echo "=============================="
 echo " [ Unbound Installer - Ubuntu ]"
 echo "=============================="
 
-# --- Check permessi ---
+# --- Check root ---
 if [ "$EUID" -ne 0 ]; then
   echo "ERROR: You need to be root to run this script"
   exit 1
 fi
 
 # --- Verifica distro ---
-. /etc/os-release
-if [[ "$ID" != "ubuntu" && "$ID_LIKE" != *"ubuntu"* ]]; then
-  echo "⚠️  Distro non Ubuntu, script ottimizzato per Ubuntu."
-fi
+#. /etc/os-release
+#if [[ "$ID" != "ubuntu" && "$ID_LIKE" != *"ubuntu"* ]]; then
+#  echo "⚠️  Distro non Ubuntu, script ottimizzato per Ubuntu."
+#fi 
 
 # --- 1. Gestione systemd-resolved ---
 if systemctl is-active systemd-resolved &>/dev/null; then
@@ -34,7 +34,7 @@ if systemctl is-active systemd-resolved &>/dev/null; then
 fi
 
 # --- 2. Installa pacchetti base ---
-echo "[+] Installo Unbound e dipendenze"
+echo "[+] Installing Unbound"
 apt-get update -y
 apt-get install -y unbound curl dns-root-data
 
@@ -96,12 +96,12 @@ unbound-anchor -a /var/lib/unbound/root.key || true
 chown unbound:unbound /var/lib/unbound/root.key
 chmod 644 /var/lib/unbound/root.key
 
-# --- 6. Abilita e avvia Unbound ---
+# --- 6) enable and start Unbound ---
 echo "[+] Abilito e riavvio Unbound"
 systemctl enable unbound
 systemctl restart unbound
 
-# --- 7. Test di funzionamento ---
+# --- 7) Test di funzionamento ---
 echo "[+] Test: risoluzione DNS ricorsiva tramite Unbound"
 if command -v dig >/dev/null 2>&1; then
   dig @127.0.0.1 -p 5335 www.google.com +short || echo "⚠️ Test DNS fallito"
