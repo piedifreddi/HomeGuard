@@ -13,7 +13,7 @@ fi
 
 # --- 1) Managing systemd-resolved ---
 if systemctl is-active systemd-resolved &>/dev/null; then
-  echo "[+] Diabling stub listener systemd-resolved"
+  echo "[+] Disabling stub listener systemd-resolved"
   sed -i 's/^#\?DNSStubListener=.*/DNSStubListener=no/g' /etc/systemd/resolved.conf || true
   systemctl restart systemd-resolved || true
 
@@ -27,11 +27,11 @@ if systemctl is-active systemd-resolved &>/dev/null; then
   fi
 fi
 
-# --- 2) Install base packets ---
+# --- 2) Install base packages ---
 echo "[+] Installing Unbound"
 apt-get update -y
 apt-get install -y unbound unbound-anchor curl dns-root-data ca-certificates
- 
+
 # --- 3) Update Root hints ---
 mkdir -p /var/lib/unbound
 cp /usr/share/dns/root.hints /var/lib/unbound/root.hints || true
@@ -42,7 +42,6 @@ chmod 644 /var/lib/unbound/root.hints
 
 # --- 4) Main configuration ---
 mkdir -p /etc/unbound/unbound.conf.d
-
 CONF_FILE="/etc/unbound/unbound.conf.d/recursor.conf"
 
 # if it doesn't exist
@@ -50,6 +49,7 @@ if [ ! -f "$CONF_FILE" ]; then
   echo "[+] Creating main configuration ($CONF_FILE)"
   cat > "$CONF_FILE" <<'EOF'
 server:
+  chroot: ""                       # disable chroot to avoid path issues
   verbosity: 0
   interface: 127.0.0.1
   port: 5335
@@ -84,13 +84,18 @@ else
   echo "[i] Configuration already existing: $CONF_FILE"
 fi
 
+# --- 4.1) Ensure chroot disabled even if config already existed ---
+if ! grep -q '^[[:space:]]*chroot:[[:space:]]*""' "$CONF_FILE"; then
+  sed -i '/^server:/a \  chroot: ""' "$CONF_FILE"
+fi
+
 # --- 5) Update trust anchor (DNSSEC) ---
-echo "[+] Aggiorno trust anchor DNSSEC (metodo Ubuntu compatibile)"
+echo "[+] Updating DNSSEC trust anchor (Ubuntu-compatible method)"
 
 # Remove duplicate or corrupted file
 rm -f /var/lib/unbound/root.key
 
-# Use systme helper to regenarate key
+# Use system helper to regenerate key
 if [ -x /usr/libexec/unbound-helper ]; then
   /usr/libexec/unbound-helper root_trust_anchor_update || true
 else
@@ -103,9 +108,17 @@ else
   fi
 fi
 
-# Set correct permission
+# Set correct permissions
 chown unbound:unbound /var/lib/unbound/root.key 2>/dev/null || true
 chmod 644 /var/lib/unbound/root.key 2>/dev/null || true
+
+# --- 5.5) Validate configuration before starting ---
+echo "[+] Validating configuration with unbound-checkconf"
+if ! unbound-checkconf; then
+  echo "[!] Configuration invalid. First lines of /var/lib/unbound/root.key:"
+  sed -n '1,40p' /var/lib/unbound/root.key 2>/dev/null || true
+  exit 1
+fi
 
 # --- 6) enable and start Unbound ---
 echo "[+] Enable and start Unbound"
